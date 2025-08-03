@@ -1,24 +1,61 @@
 
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type UpdateUserInput, type User } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateUser(input: UpdateUserInput): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating user profile information,
-    // handling role changes with proper authorization, and account status management.
-    return Promise.resolve({
-        id: input.id,
-        username: 'placeholder',
-        email: 'placeholder@example.com',
-        password_hash: 'placeholder_hash',
-        role: input.role || 'reader',
-        display_name: input.display_name || null,
-        avatar_url: input.avatar_url || null,
-        bio: input.bio || null,
-        coin_balance: 0,
-        is_active: input.is_active ?? true,
-        email_verified: false,
-        two_factor_enabled: false,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as User);
-}
+export const updateUser = async (input: UpdateUserInput): Promise<User> => {
+  try {
+    // First, verify the user exists
+    const existingUser = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.id, input.id))
+      .execute();
+
+    if (existingUser.length === 0) {
+      throw new Error(`User with id ${input.id} not found`);
+    }
+
+    // Build update object with only provided fields
+    const updateData: any = {
+      updated_at: new Date()
+    };
+
+    if (input.display_name !== undefined) {
+      updateData.display_name = input.display_name;
+    }
+
+    if (input.avatar_url !== undefined) {
+      updateData.avatar_url = input.avatar_url;
+    }
+
+    if (input.bio !== undefined) {
+      updateData.bio = input.bio;
+    }
+
+    if (input.is_active !== undefined) {
+      updateData.is_active = input.is_active;
+    }
+
+    if (input.role !== undefined) {
+      updateData.role = input.role;
+    }
+
+    // Update the user record
+    const result = await db.update(usersTable)
+      .set(updateData)
+      .where(eq(usersTable.id, input.id))
+      .returning()
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    const user = result[0];
+    return {
+      ...user,
+      coin_balance: parseFloat(user.coin_balance)
+    };
+  } catch (error) {
+    console.error('User update failed:', error);
+    throw error;
+  }
+};

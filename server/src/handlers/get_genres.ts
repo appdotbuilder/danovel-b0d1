@@ -1,9 +1,17 @@
 
+import { db } from '../db';
+import { genresTable } from '../db/schema';
 import { type Genre } from '../schema';
 
-export async function getGenres(): Promise<Genre[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is fetching all active genres for public use
-    // and all genres (including inactive) for admin panel.
-    return [];
-}
+export const getGenres = async (): Promise<Genre[]> => {
+  try {
+    const result = await db.select()
+      .from(genresTable)
+      .execute();
+
+    return result;
+  } catch (error) {
+    console.error('Get genres failed:', error);
+    throw error;
+  }
+};
